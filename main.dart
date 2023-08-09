@@ -1,5 +1,6 @@
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -47,6 +48,8 @@ class _HomeState extends State<Home> {
       const LatLng(40, -102); //centred around middle of USA, arbitrary
 
   List<Marker> markers = [];
+  HashMap<String, List<String>> dict = new HashMap();
+  int lv_length = 0;
 
   void _onMapCreated(GoogleMapController controller) async {
     mapController = controller;
@@ -60,7 +63,7 @@ class _HomeState extends State<Home> {
       // Map<dynamic, Map<dynamic, dynamic>>? vals =
       //     event.snapshot.value as Map<dynamic, Map>?;
 
-      Map<dynamic,dynamic> map = event.snapshot.value as Map;
+      Map<dynamic, dynamic> map = event.snapshot.value as Map;
       List vals = map.values.toList();
 
       // print(vals['country']);
@@ -68,129 +71,163 @@ class _HomeState extends State<Home> {
       if (vals != null) {
         for (var user in vals) {
           print(user.toString());
-
-          // var temp = user as Map<dynamic, dynamic>;
+          print(user['country']);
 
           markers.add(Marker(
               markerId: MarkerId(user.hashCode.toString()),
               position: LatLng(user['lat'], user['lng'])));
+
+          String country = user['country'];
+
+          if (dict[country] == null) {
+            //if we have included users from a certain country in the map, then add current user to the country. else, add a new list with the user in it
+            dict[country] = [user['message']];
+          } else {
+            // print(user['message'].runtimeType);
+            dict[country]?.add(user['message']);
+          }
         }
       }
+
+      print('Success! Local data is: $dict'); //TESTING
     } catch (e) {
-      print(e);
+      print('Error! We have a problem: $e}');
     }
 
-    print(markers);
+    lv_length = dict[display_country]!.length;
 
     setState(() {
-
+      print('Loaded data');
     });
   }
 
   TextEditingController controller = TextEditingController();
 
-  // FirebaseDatabase db = FirebaseDatabase.instance;
-  // DatabaseReference ref = FirebaseDatabase.instance.ref();
+  String display_country =
+      'Canada'; //text to display selected country, TESTING: canada by default
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: Center(
-            child: SingleChildScrollView(
-                child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Row(
+        body: SingleChildScrollView(
+      child: Center(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 700,
-              height: 900,
-              child: GoogleMap(
-                onMapCreated: _onMapCreated,
-                initialCameraPosition:
-                    CameraPosition(target: _center, zoom: 3.0),
-                markers: Set<Marker>.of(markers),
-              ), //TODO: make scrollable list change to show country-specific complaints
+          children: <Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 700,
+                  height: 900,
+                  child: GoogleMap( //TODO: add functionality for marker onclick, view relevant country's complaints instead
+                    onMapCreated: _onMapCreated,
+                    initialCameraPosition:
+                        CameraPosition(target: _center, zoom: 3.0),
+                    markers: Set<Marker>.of(markers),
+                  ),
+                ),
+                Container(
+                  width: 350,
+                  height: 600,
+                  // color: Colors.lightBlueAccent.withOpacity(0.5),
+                  child: Card(
+                    elevation: 4,
+                    shadowColor: Colors.black12,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15.0)),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              '$display_country',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          ListView.builder(
+                            itemCount: lv_length,
+                            itemBuilder: (BuildContext context, int index) {
+                              return ListTile(
+                                title: Text(dict[display_country]![index]),
+                              );
+                            },
+                            shrinkWrap: true,
+                            padding: const EdgeInsets.all(8),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            Container(
-              width: 350,
-              height: 600,
-              // color: Colors.lightBlueAccent.withOpacity(0.5),
-              child: Card(
-                elevation: 4,
-                shadowColor: Colors.black12,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15.0)),
-                child: ListView(
-                  padding: const EdgeInsets.all(8),
-                  //TODO:use database to make scrollable list of comments here
+            Padding(
+              padding: const EdgeInsets.all(15.0),
+              child: Container(
+                width: 600,
+                child: TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.multiline,
+                  maxLines: null,
+                  autofocus: false,
+                  decoration: InputDecoration(
+                    labelText: "Speak your mind!",
+                  ),
                 ),
               ),
             ),
-          ],
-        ),
-        Padding(
-          padding: const EdgeInsets.all(15.0),
-          child: Container(
-            width: 600,
-            child: TextField(
-              controller: controller,
-              keyboardType: TextInputType.multiline,
-              maxLines: null,
-              autofocus: false,
-              decoration: InputDecoration(
-                labelText: "Speak your mind!",
+            Padding(
+              padding: EdgeInsets.all(20.0),
+              child: MaterialButton(
+                color: Colors.white70,
+                height: 50,
+                minWidth: 200,
+                elevation: 4,
+                onPressed: () async {
+                  final message = controller.text; //gets users message
+
+                  Position pos = await Geolocator.getCurrentPosition(
+                      desiredAccuracy: LocationAccuracy
+                          .lowest); //gives user location coordinates
+                  //TODO: add popup that tells user to refresh after enabling location services if they r disabled
+
+                  final response = await http.get(Uri.parse(
+                      'https://us1.locationiq.com/v1/reverse?key=$GEOCODING_API_KEY&lat=${pos.latitude}&lon=${pos.longitude}&format=json'));
+                  var result = jsonDecode(response.body);
+                  String country = result['address']
+                      ['country']; //gets country of user, using LocationIQ API
+
+                  DatabaseReference db_ref = FirebaseDatabase.instance.ref();
+                  DatabaseReference new_post_ref = db_ref.push();
+
+                  await new_post_ref.set({
+                    'country': country,
+                    'lng': pos.longitude,
+                    //edit slightly to avoid doxxing
+                    'lat': pos.latitude,
+                    //''
+                    'message': message
+                  });
+
+                  setState(() {});
+                },
+                child: Text("It Sucks Here, Too!"),
               ),
             ),
-          ),
+            const Padding(
+              padding: const EdgeInsets.all(15.0),
+              child: const Text(
+                  'Click on a country to view how it sucks, or leave a comment detailing why!'),
+            )
+          ],
         ),
-        Padding(
-          padding: EdgeInsets.all(20.0),
-          child: MaterialButton(
-            color: Colors.white70,
-            height: 50,
-            minWidth: 200,
-            elevation: 4,
-            onPressed: () async {
-              final message = controller.text; //gets users message
-
-              Position pos = await Geolocator.getCurrentPosition(
-                  desiredAccuracy: LocationAccuracy
-                      .lowest); //gives user location coordinates
-              //TODO: add popup that tells user to refresh after enabling location services if they r disabled
-
-              final response = await http.get(Uri.parse(
-                  'https://us1.locationiq.com/v1/reverse?key=$GEOCODING_API_KEY&lat=${pos.latitude}&lon=${pos.longitude}&format=json'));
-              var result = jsonDecode(response.body);
-              String country = result['address']
-                  ['country']; //gets country of user, using LocationIQ API
-
-              DatabaseReference db_ref = FirebaseDatabase.instance.ref();
-              DatabaseReference new_post_ref = db_ref.push();
-
-              await new_post_ref.set({
-                'country': country,
-                'lng': pos.longitude,
-                //edit slightly to avoid doxxing
-                'lat': pos.latitude,
-                //''
-                'message': message
-              });
-
-              setState(() {});
-            },
-            child: Text("It Sucks Here, Too!"),
-          ),
-        ),
-        const Padding(
-          padding: const EdgeInsets.all(15.0),
-          child: const Text(
-              'Click on a country to view how it sucks, or leave a comment detailing why!'),
-        )
-      ],
-    ))));
+      ),
+    ));
   }
 }
