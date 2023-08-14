@@ -123,6 +123,20 @@ class _HomeState extends State<Home> {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.all(15),
+              child: Text(
+                'It Sucks Here, Too!',
+                style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const Padding(
+              padding: const EdgeInsets.fromLTRB(15,0,15,15),
+              child: const Text(
+                'Click on a marker to view how that country sucks, or leave a comment detailing why!',
+                style: TextStyle(fontSize: 24),
+              ),
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
@@ -227,16 +241,20 @@ class _HomeState extends State<Home> {
                     'message': message
                   });
 
+                  controller.clear(); //clears textfield text
+
                   setState(() {});
+
+                  showDialog(context: context, builder: (context) => AlertDialog(
+                    title: Text('Thanks for the contribution!'),
+                    content: Text(
+                      'Your post has been shared successfully, please refresh to be able to view it.'
+                    ),
+                  ));
                 },
                 child: Text("It Sucks Here, Too!"),
               ),
             ),
-            const Padding(
-              padding: const EdgeInsets.all(15.0),
-              child: const Text(
-                  'Click on a country to view how it sucks, or leave a comment detailing why!'),
-            )
           ],
         ),
       ),
