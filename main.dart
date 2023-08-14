@@ -44,6 +44,9 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   late GoogleMapController mapController;
 
+  String display_country =
+      'Canada'; //text to display selected country, TESTING: canada by default
+
   final LatLng _center =
       const LatLng(40, -102); //centred around middle of USA, arbitrary
 
@@ -75,7 +78,13 @@ class _HomeState extends State<Home> {
 
           markers.add(Marker(
               markerId: MarkerId(user.hashCode.toString()),
-              position: LatLng(user['lat'], user['lng'])));
+              position: LatLng(user['lat'], user['lng']),
+              onTap: () {
+                display_country = user['country'];
+                setState(() {
+                  lv_length = dict[display_country]!.length;
+                });
+              }));
 
           String country = user['country'];
 
@@ -95,6 +104,8 @@ class _HomeState extends State<Home> {
     }
 
     lv_length = dict[display_country]!.length;
+    print(dict[display_country]);
+    print('Listview count is $lv_length');
 
     setState(() {
       print('Loaded data');
@@ -102,9 +113,6 @@ class _HomeState extends State<Home> {
   }
 
   TextEditingController controller = TextEditingController();
-
-  String display_country =
-      'Canada'; //text to display selected country, TESTING: canada by default
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +130,7 @@ class _HomeState extends State<Home> {
                 SizedBox(
                   width: 700,
                   height: 900,
-                  child: GoogleMap( //TODO: add functionality for marker onclick, view relevant country's complaints instead
+                  child: GoogleMap(
                     onMapCreated: _onMapCreated,
                     initialCameraPosition:
                         CameraPosition(target: _center, zoom: 3.0),
@@ -153,9 +161,14 @@ class _HomeState extends State<Home> {
                           ListView.builder(
                             itemCount: lv_length,
                             itemBuilder: (BuildContext context, int index) {
-                              return ListTile(
-                                title: Text(dict[display_country]![index]),
-                              );
+                              return Card(
+                                  child: Text(dict[display_country]![index]),
+                                  elevation: 4,
+                                  color: Colors.white38,
+                                  shadowColor: Colors.black12,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(15.0)));
                             },
                             shrinkWrap: true,
                             padding: const EdgeInsets.all(8),
@@ -195,7 +208,6 @@ class _HomeState extends State<Home> {
                   Position pos = await Geolocator.getCurrentPosition(
                       desiredAccuracy: LocationAccuracy
                           .lowest); //gives user location coordinates
-                  //TODO: add popup that tells user to refresh after enabling location services if they r disabled
 
                   final response = await http.get(Uri.parse(
                       'https://us1.locationiq.com/v1/reverse?key=$GEOCODING_API_KEY&lat=${pos.latitude}&lon=${pos.longitude}&format=json'));
