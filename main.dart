@@ -130,17 +130,133 @@ class _HomeState extends State<Home> {
                 style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
               ),
             ),
-            const Padding(
-              padding: const EdgeInsets.fromLTRB(15,0,15,15),
-              child: const Text(
-                'Click on a marker to view how that country sucks, or leave a comment detailing why!',
-                style: TextStyle(fontSize: 24),
-              ),
-            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
+                Column(
+                  children: [
+                    const Padding(
+                      padding: const EdgeInsets.fromLTRB(15, 0, 15, 15),
+                      child: const Text(
+                        'Click on a marker to view how that country sucks, or leave a comment detailing why!',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
+                    Container(
+                      width: 350,
+                      height: 600,
+                      // color: Colors.lightBlueAccent.withOpacity(0.5),
+                      child: Card(
+                        elevation: 4,
+                        shadowColor: Colors.black12,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15.0)),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Text(
+                                  '$display_country',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              ListView.builder(
+                                itemCount: lv_length,
+                                itemBuilder: (BuildContext context, int index) {
+                                  return Card(
+                                      child:
+                                          Text(dict[display_country]![index]),
+                                      elevation: 4,
+                                      color: Colors.white38,
+                                      shadowColor: Colors.black12,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(15.0)));
+                                },
+                                shrinkWrap: true,
+                                padding: const EdgeInsets.all(8),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(15.0),
+                          child: Container(
+                            width: 400,
+                            child: TextField(
+                              controller: controller,
+                              keyboardType: TextInputType.multiline,
+                              maxLines: null,
+                              autofocus: false,
+                              decoration: InputDecoration(
+                                labelText: "Speak your mind!",
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.all(20.0),
+                          child: MaterialButton(
+                            color: Colors.white70,
+                            height: 50,
+                            minWidth: 200,
+                            elevation: 4,
+                            onPressed: () async {
+                              final message =
+                                  controller.text; //gets users message
+
+                              Position pos = await Geolocator.getCurrentPosition(
+                                  desiredAccuracy: LocationAccuracy
+                                      .lowest); //gives user location coordinates
+
+                              final response = await http.get(Uri.parse(
+                                  'https://us1.locationiq.com/v1/reverse?key=$GEOCODING_API_KEY&lat=${pos.latitude}&lon=${pos.longitude}&format=json'));
+                              var result = jsonDecode(response.body);
+                              String country = result['address'][
+                                  'country']; //gets country of user, using LocationIQ API
+
+                              DatabaseReference db_ref =
+                                  FirebaseDatabase.instance.ref();
+                              DatabaseReference new_post_ref = db_ref.push();
+
+                              await new_post_ref.set({
+                                'country': country,
+                                'lng': pos.longitude,
+                                //edit slightly to avoid doxxing
+                                'lat': pos.latitude,
+                                //''
+                                'message': message
+                              });
+
+                              controller.clear(); //clears textfield text
+
+                              setState(() {});
+
+                              showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                        title: Text(
+                                            'Thanks for the contribution!'),
+                                        content: Text(
+                                            'Your post has been shared successfully, please refresh to be able to view it.'),
+                                      ));
+                            },
+                            child: Text("It Sucks Here, Too!"),
+                          ),
+                        )
+                      ],
+                    ),
+                  ],
+                ),
                 SizedBox(
                   width: 700,
                   height: 900,
@@ -151,109 +267,7 @@ class _HomeState extends State<Home> {
                     markers: Set<Marker>.of(markers),
                   ),
                 ),
-                Container(
-                  width: 350,
-                  height: 600,
-                  // color: Colors.lightBlueAccent.withOpacity(0.5),
-                  child: Card(
-                    elevation: 4,
-                    shadowColor: Colors.black12,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15.0)),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Text(
-                              '$display_country',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: 20, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          ListView.builder(
-                            itemCount: lv_length,
-                            itemBuilder: (BuildContext context, int index) {
-                              return Card(
-                                  child: Text(dict[display_country]![index]),
-                                  elevation: 4,
-                                  color: Colors.white38,
-                                  shadowColor: Colors.black12,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(15.0)));
-                            },
-                            shrinkWrap: true,
-                            padding: const EdgeInsets.all(8),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
               ],
-            ),
-            Padding(
-              padding: const EdgeInsets.all(15.0),
-              child: Container(
-                width: 600,
-                child: TextField(
-                  controller: controller,
-                  keyboardType: TextInputType.multiline,
-                  maxLines: null,
-                  autofocus: false,
-                  decoration: InputDecoration(
-                    labelText: "Speak your mind!",
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.all(20.0),
-              child: MaterialButton(
-                color: Colors.white70,
-                height: 50,
-                minWidth: 200,
-                elevation: 4,
-                onPressed: () async {
-                  final message = controller.text; //gets users message
-
-                  Position pos = await Geolocator.getCurrentPosition(
-                      desiredAccuracy: LocationAccuracy
-                          .lowest); //gives user location coordinates
-
-                  final response = await http.get(Uri.parse(
-                      'https://us1.locationiq.com/v1/reverse?key=$GEOCODING_API_KEY&lat=${pos.latitude}&lon=${pos.longitude}&format=json'));
-                  var result = jsonDecode(response.body);
-                  String country = result['address']
-                      ['country']; //gets country of user, using LocationIQ API
-
-                  DatabaseReference db_ref = FirebaseDatabase.instance.ref();
-                  DatabaseReference new_post_ref = db_ref.push();
-
-                  await new_post_ref.set({
-                    'country': country,
-                    'lng': pos.longitude,
-                    //edit slightly to avoid doxxing
-                    'lat': pos.latitude,
-                    //''
-                    'message': message
-                  });
-
-                  controller.clear(); //clears textfield text
-
-                  setState(() {});
-
-                  showDialog(context: context, builder: (context) => AlertDialog(
-                    title: Text('Thanks for the contribution!'),
-                    content: Text(
-                      'Your post has been shared successfully, please refresh to be able to view it.'
-                    ),
-                  ));
-                },
-                child: Text("It Sucks Here, Too!"),
-              ),
             ),
           ],
         ),
