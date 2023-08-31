@@ -15,6 +15,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 import 'package:nominatim_geocoding/nominatim_geocoding.dart';
+import 'dart:math';
 
 void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -113,6 +114,8 @@ class _HomeState extends State<Home> {
   }
 
   TextEditingController controller = TextEditingController();
+
+  Random r = new Random();
 
   @override
   Widget build(BuildContext context) {
@@ -230,9 +233,9 @@ class _HomeState extends State<Home> {
 
                               await new_post_ref.set({
                                 'country': country,
-                                'lng': pos.longitude,
-                                //edit slightly to avoid doxxing
-                                'lat': pos.latitude,
+                                'lng': pos.longitude + r.nextDouble() / 1000,
+                                 //edits slightly to avoid doxxing
+                                'lat': pos.latitude + r.nextDouble() / 1000,
                                 //''
                                 'message': message
                               });
